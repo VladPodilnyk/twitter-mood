@@ -1,23 +1,19 @@
 package app
 
+import app.twitter.client.TwitterComponent
 import cats.effect.ExitCode
-import monix.bio.{BIOApp, UIO}
+import monix.bio.{BIOApp, Task, UIO}
+
+import scala.jdk.CollectionConverters._
 
 object Main extends BIOApp {
-  override def run(args: List[String]): UIO[ExitCode] = ???
-}
-
-object testApp extends App {
-  import twitter4j.Twitter
-  import twitter4j.TwitterFactory
-  import twitter4j.conf.ConfigurationBuilder
-
-  val cb = new ConfigurationBuilder
-  cb.setDebugEnabled(true)
-    .setOAuthConsumerKey("*********************")
-    .setOAuthConsumerSecret("******************************************")
-    .setOAuthAccessToken("**************************************************")
-    .setOAuthAccessTokenSecret("******************************************")
-  val tf      = new TwitterFactory(cb.build)
-  val twitter = tf.getInstance
+  override def run(args: List[String]): UIO[ExitCode] = {
+    TwitterComponent.mkComponent.use {
+      c =>
+        for {
+          rawTrends <- c.request(_.trends().getAvailableTrends)
+          _         <- Task(println(rawTrends.asScala.toList.map(_.getName)))
+        } yield ()
+    }
+  }.onErrorHandle(e => println(e)).flatMap(_ => UIO(ExitCode.Success))
 }

@@ -28,3 +28,7 @@ project/metals.sbt
 .bloop/
 .metals/
 project/.bloop/
+
+# secrets
+env.sh
+env-clean.sh
