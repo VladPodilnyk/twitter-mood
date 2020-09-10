@@ -5,7 +5,8 @@ object Deps {
   final val cats       = "org.typelevel" %% "cats-core" % Versions.cats
   final val catsEffect = "org.typelevel" %% "cats-effect" % Versions.cats_effect
   final val catsRetry  = "com.github.cb372" %% "cats-retry" % Versions.cats_retry
-  final val fs2        = "co.fs2" %% "fs2-core" % Versions.fs2
+  final val circeCore  = "io.circe" %% "circe-core" % Versions.circe
+  final val circeParse = "io.circe" %% "circe-parser" % Versions.circe
   final val log4cats   = "io.chrisdavenport" %% "log4cats-slf4j" % Versions.log4cats
   final val twitter4j  = "org.twitter4j" % "twitter4j-core" % Versions.twitter4j
 
