@@ -9,7 +9,7 @@ import scala.io.Source
 object ForbiddenWordsLoader {
   private val filename = "blacklisted-words.json"
   def load: Task[ForbiddenWords] = {
-    Task.eval(Source.fromFile(s"/$filename"))
+    Task.eval(Source.fromResource(filename))
       .bracket(buf => decode[List[String]](buf.mkString).toTask.map(ForbiddenWords.apply))(buf => UIO(buf.close()))
   }
 

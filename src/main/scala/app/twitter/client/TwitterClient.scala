@@ -1,6 +1,6 @@
 package app.twitter.client
 
-import app.twitter.domain.{ForbiddenWords, Mood}
+import app.twitter.domain.ForbiddenWords
 import monix.bio.{Cause, Task, UIO}
 import twitter4j.{Query, QueryResult}
 
@@ -12,9 +12,9 @@ trait TwitterClient {
 }
 
 object TwitterClient {
-  def mkClient(component: TwitterComponent, blackListedWords: ForbiddenWords): Task[TwitterClient] = Task.eval(new Impl(component, blackListedWords))
+  def mkClient(component: TwitterComponent, blackListedWords: ForbiddenWords): Task[TwitterClient] = Task.eval(new Impl(component, new TextProcessor(blackListedWords)))
 
-  private final class Impl(twitter: TwitterComponent, blackListedWords: ForbiddenWords) extends TwitterClient {
+  private final class Impl(twitter: TwitterComponent, textProcessor: TextProcessor) extends TwitterClient {
     private val maxTweetsPerTrend = 500
     private val tweetLanguage     = "en"
     private val maxTweetsInBatch  = 100
@@ -30,11 +30,9 @@ object TwitterClient {
                 collectTweets(query)
             }.map(_.flatten)
 
-        // debug
-        _ <- Task(println(s"${res.size}"))
-        _ <- Task(println(s"${res.take(5).mkString("\n")}"))
-        _ <- Task.sleep(2.minutes)
-        //
+        mood = textProcessor.defineMood(res)
+        _   <- UIO(println(mood))
+        _   <- Task.sleep(2.minutes)
       } yield ()).redeemCause(logError, _ => UIO.unit).loopForever
     }
 
@@ -58,16 +56,6 @@ object TwitterClient {
         res        <- loop(firstBatch, firstBatch.getTweets.asScala.map(_.getText).toList)
       } yield res
     }
-
-    /**
-     * Super simple function to process tweets with the following logic:
-     * 1) calculate total number of words
-     * 2) calculate total  number of bad words occurrence
-     * 3) make a verdict base on bad-words/all-words ratio
-     *
-     * TODO: next step - more sophisticated algorithm or NLP
-     */
-    private[this] def processTweets: Task[Mood] = ???
 
     // TODO: add logger
     private[this] def logError(cause: Cause[Throwable]): UIO[Unit] = {
