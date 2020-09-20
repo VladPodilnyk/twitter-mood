@@ -8,6 +8,7 @@ object Versions {
   final val fs2            = "2.4.4"
   final val kind_projector = "0.11.0"
   final val log4cats       = "1.1.1"
+  final val htt4s          = "0.21.7"
 
   // for tests
   final val scalaCheck = "1.14.3"

@@ -1,6 +1,7 @@
 package app.twitter.client
 
-import app.twitter.domain.ForbiddenWords
+import app.twitter.domain.{ForbiddenWords, Mood}
+import cats.effect.concurrent.Ref
 import monix.bio.{Cause, Task, UIO}
 import twitter4j.{Query, QueryResult}
 
@@ -9,18 +10,32 @@ import scala.jdk.CollectionConverters._
 
 trait TwitterClient {
   def poll: UIO[Unit]
+  def get: UIO[String]
 }
 
 object TwitterClient {
-  def mkClient(component: TwitterComponent, blackListedWords: ForbiddenWords): Task[TwitterClient] = Task.eval(new Impl(component, new TextProcessor(blackListedWords)))
+  def mkClient(component: TwitterComponent, blackListedWords: ForbiddenWords): Task[TwitterClient] = {
+    for {
+      state     <- Ref.of[Task, Option[Mood]](None)
+      clientImpl = new Impl(state, component, new TextProcessor(blackListedWords))
+    } yield clientImpl
+  }
 
-  private final class Impl(twitter: TwitterComponent, textProcessor: TextProcessor) extends TwitterClient {
+  private final class Impl(state: Ref[Task, Option[Mood]], twitter: TwitterComponent, textProcessor: TextProcessor) extends TwitterClient {
     private val maxTweetsPerTrend = 500
     private val tweetLanguage     = "en"
     private val maxTweetsInBatch  = 100
 
+    override def get: UIO[String] = {
+      state.get.map {
+        case Some(value) => value.toString
+        case None        => "Calculating..."
+      }
+      // FIXME: possibly redeem here or throw UnexpectedException
+    }.hideErrors
+
     override def poll: UIO[Unit] = {
-      (for {
+      for {
         trends <- fetchTrends
         res <-
           Task
@@ -29,18 +44,17 @@ object TwitterClient {
                 val query = new Query(t).lang(tweetLanguage).count(maxTweetsInBatch)
                 collectTweets(query)
             }.map(_.flatten)
-
         mood = textProcessor.defineMood(res)
-        _   <- UIO(println(mood))
+        _   <- state.set(Some(mood))
         _   <- Task.sleep(2.minutes)
-      } yield ()).redeemCause(logError, _ => UIO.unit).loopForever
-    }
+      } yield ()
+    }.redeemCauseWith(logError, _ => UIO.unit).loopForever
 
     private[this] def fetchTrends: Task[List[String]] = {
       val regex = "#[a-z|A-Z|0-9]*".r
       for {
-        trends        <- twitter.request(_.trends().getPlaceTrends(1))
-        engNamedTrends = trends.getTrends.toList.filter(t => regex.matches(t.getName)).map(_.getName)
+        trends        <- twitter.request(_.trends().getPlaceTrends(1).getTrends)
+        engNamedTrends = trends.toList.filter(t => regex.matches(t.getName)).map(_.getName)
       } yield engNamedTrends
     }
 
