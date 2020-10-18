@@ -1,6 +1,6 @@
 package app.twitter.client
 
-import app.twitter.domain.{ForbiddenWords, Mood}
+import app.twitter.domain.{ForbiddenWords, Mood, Status}
 import cats.effect.concurrent.Ref
 import monix.bio.{Cause, Task, UIO}
 import twitter4j.{Query, QueryResult}
@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters._
 
 trait TwitterClient {
   def poll: UIO[Unit]
-  def get: UIO[String]
+  def get: UIO[Status]
 }
 
 object TwitterClient {
@@ -26,10 +26,10 @@ object TwitterClient {
     private val tweetLanguage     = "en"
     private val maxTweetsInBatch  = 100
 
-    override def get: UIO[String] = {
+    override def get: UIO[Status] = {
       state.get.map {
-        case Some(value) => value.toString
-        case None        => "Calculating..."
+        case Some(value) => Status(value)
+        case None        => Status(Mood.UNKNOWN)
       }
       // FIXME: possibly redeem here or throw UnexpectedException
     }.hideErrors

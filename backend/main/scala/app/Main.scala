@@ -3,7 +3,6 @@ package app
 import app.twitter.client.{TwitterClient, TwitterComponent}
 import app.twitter.config.ForbiddenWordsLoader
 import app.twitter.http.StatusRoutes
-import cats.syntax.functor._
 import cats.effect.ExitCode
 import monix.bio.{BIOApp, Task, UIO}
 import org.http4s.server.blaze.BlazeServerBuilder
